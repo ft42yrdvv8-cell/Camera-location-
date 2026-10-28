@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Camera & Location</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 30px auto;
+      padding: 20px;
+      background: #f3f5f7;
+      color: #18202b;
+    }
+    main {
+      background: white;
+      padding: 22px;
+      border-radius: 16px;
+    }
+    button {
+      padding: 13px;
+      margin: 6px 0;
+      width: 100%;
+      border: 0;
+      border-radius: 9px;
+      background: #1769e0;
+      color: white;
+      font-size: 16px;
+    }
+    video {
+      width: 100%;
+      background: #111;
+      border-radius: 12px;
+      margin-top: 12px;
+    }
+    #map {
+      width: 100%;
+      height: 250px;
+      border: 0;
+      margin-top: 12px;
+    }
+    a { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+<main>
+  <h2>📸 Camera & Location</h2>
+  <p>
+    Choose what to share. Camera and location permissions
+    are requested separately. Nothing is uploaded.
+  </p>
+
+  <button id="cameraBtn">Enable front camera</button>
+  <video id="video" autoplay playsinline hidden></video>
+  <button id="stopBtn" hidden>Turn camera off</button>
+
+  <hr>
+  <button id="locationBtn">Show my location</button>
+  <p id="status" role="status">Location not requested.</p>
+  <a id="mapsLink" target="_blank" rel="noopener noreferrer"
+     hidden>Open location in Google Maps</a>
+
+  <iframe id="map" title="Your location on the map"
+    hidden loading="lazy" referrerpolicy="no-referrer"></iframe>
+</main>
+
+<script>
+  const video = document.getElementById("video");
+  const cameraBtn = document.getElementById("cameraBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const status = document.getElementById("status");
+  let stream;
+
+  cameraBtn.onclick = async () => {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: false
+      });
+      video.srcObject = stream;
+      video.hidden = false;
+      stopBtn.hidden = false;
+      cameraBtn.textContent = "Front camera enabled";
+    } catch (err) {
+      status.textContent =
+        "Camera unavailable or permission denied: " + err.message;
+    }
+  };
+
+  stopBtn.onclick = () => {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    video.srcObject = null;
+    video.hidden = true;
+    stopBtn.hidden = true;
+    cameraBtn.textContent = "Enable front camera";
+  };
+
+  document.getElementById("locationBtn").onclick = () => {
+    if (!navigator.geolocation) {
+      status.textContent = "Location is not supported by this browser.";
+      return;
+    }
+
+    status.textContent = "Requesting location permission...";
+
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const { latitude, longitude, accuracy } = position.coords;
+        const coords = `${latitude},${longitude}`;
+        status.textContent =
+          `Location found. Accuracy: about ${Math.round(accuracy)} metres.`;
+
+        const link = document.getElementById("mapsLink");
+        link.href = "https://www.google.com/maps?q=" +
+          encodeURIComponent(coords);
+        link.hidden = false;
+
+        const map = document.getElementById("map");
+        map.src = "https://maps.google.com/maps?q=" +
+          encodeURIComponent(coords) + "&z=16&output=embed";
+        map.hidden = false;
+      },
+      error => {
+        status.textContent =
+          "Location unavailable. Check permissions and location settings.";
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
+
+  window.addEventListener("pagehide", () => {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+  });
+</script>
+</body>
+</html>
